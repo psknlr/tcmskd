@@ -119,7 +119,6 @@ h5netcdf==1.8.1
 harmony-pytorch==0.1.8
 hf-xet==1.2.0
 hmmlearn==0.3.3
-httpstan==4.13.0
 httptools==0.7.1
 httpx-sse==0.4.3
 huggingface_hub==1.4.1
