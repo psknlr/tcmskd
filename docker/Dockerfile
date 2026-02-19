@@ -9,7 +9,7 @@ WORKDIR /workspace
 COPY env_spec/environment.base.yml /tmp/environment.base.yml
 COPY env_spec/requirements.pip.txt /tmp/requirements.pip.txt
 
-# 1) 重建 conda 环境（含生信工具 + 需要编译的包统一走 conda）
+# 1) 重建 conda 环境 + 所有需要编译的包统一走 conda-forge
 RUN micromamba create -y -n biomni \
       -c bioconda \
       -c conda-forge \
@@ -21,7 +21,11 @@ RUN micromamba create -y -n biomni \
       r-base && \
     micromamba clean -a -y
 
-# 2) 装 pip 依赖（已过滤掉无 arm64 wheel 的包）
+# 2) pip 安装前先单独装 scvi-tools 的非 skmisc 版本，避免触发 scikit-misc 编译
+RUN micromamba run -n biomni \
+    pip install --no-cache-dir --no-deps scvi-tools==1.4.1
+
+# 3) 装其余 pip 依赖
 RUN micromamba run -n biomni \
     python -m pip install -U pip setuptools wheel && \
     micromamba run -n biomni \
