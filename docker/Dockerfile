@@ -16,7 +16,7 @@ RUN micromamba create -y -n biomni \
       -f /tmp/environment.base.yml && \
     micromamba clean -a -y
 
-# 2) 所有需要编译的包统一走 conda-forge 预编译版本
+# 2) 所有需要编译的包 + 完整编译器工具链统一走 conda-forge
 RUN micromamba install -y -n biomni \
       -c conda-forge \
       -c bioconda \
@@ -29,14 +29,20 @@ RUN micromamba install -y -n biomni \
       git \
       gcc \
       gxx \
-      make && \
+      gfortran \
+      make \
+      pkg-config && \
     micromamba clean -a -y
 
-# 3) 升级 pip 并预装编译工具链
+# 3) 升级 pip 工具链
 RUN micromamba run -n biomni \
     pip install -U pip setuptools wheel cython
 
-# 4) 安装其余 pip 依赖（跳过已由 conda 满足的包）
+# 4) 关键：先用 --no-deps 装 scvi-tools，阻止它拉 scikit-misc 重新编译
+RUN micromamba run -n biomni \
+    pip install --no-cache-dir --no-deps scvi-tools==1.4.1
+
+# 5) 安装其余 pip 依赖
 RUN micromamba run -n biomni \
     pip install --no-cache-dir -r /tmp/requirements.pip.txt
 
