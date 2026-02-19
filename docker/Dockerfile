@@ -38,11 +38,26 @@ RUN micromamba install -y -n biomni \
 RUN micromamba run -n biomni \
     pip install -U pip setuptools wheel cython
 
-# 4) 关键：先用 --no-deps 装 scvi-tools，阻止它拉 scikit-misc 重新编译
+# 4) 预装常见基础依赖（解决安装顺序问题）
+RUN micromamba run -n biomni \
+    pip install --no-cache-dir \
+      python-dateutil \
+      pytz \
+      six \
+      packaging \
+      certifi \
+      charset-normalizer \
+      urllib3 \
+      requests \
+      numpy \
+      pandas \
+      scipy
+
+# 5) 先用 --no-deps 装 scvi-tools，阻止拉 scikit-misc 重新编译
 RUN micromamba run -n biomni \
     pip install --no-cache-dir --no-deps scvi-tools==1.4.1
 
-# 5) 安装其余 pip 依赖
+# 6) 安装其余 pip 依赖
 RUN micromamba run -n biomni \
     pip install --no-cache-dir -r /tmp/requirements.pip.txt
 
