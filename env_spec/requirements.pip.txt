@@ -283,7 +283,6 @@ scikit-bio==0.7.2
 scikit-image==0.26.0
 scrublet==0.2.3
 scvelo==0.3.3
-scvi-tools==1.4.1
 sdjson==0.5.0
 segment-anything==1.0
 selenium==4.40.0
