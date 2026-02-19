@@ -9,7 +9,7 @@ WORKDIR /workspace
 COPY env_spec/environment.base.yml /tmp/environment.base.yml
 COPY env_spec/requirements.pip.txt /tmp/requirements.pip.txt
 
-# 1) 重建 conda 环境 + 所有需要编译的包统一走 conda-forge
+# 1) 重建 conda 环境 + 需要编译的包走 conda + 装 git（解决 meson version_please.py 问题）
 RUN micromamba create -y -n biomni \
       -c bioconda \
       -c conda-forge \
@@ -17,15 +17,16 @@ RUN micromamba create -y -n biomni \
     micromamba install -y -n biomni \
       -c conda-forge \
       openmm \
-      scikit-misc \
-      r-base && \
+      r-base \
+      git && \
     micromamba clean -a -y
 
-# 2) pip 安装前先单独装 scvi-tools 的非 skmisc 版本，避免触发 scikit-misc 编译
-RUN micromamba run -n biomni \
-    pip install --no-cache-dir --no-deps scvi-tools==1.4.1
+# 2) 先单独安装 scikit-misc（设置假版本号绕过 git describe）
+RUN SETUPTOOLS_SCM_PRETEND_VERSION=0.5.2 \
+    micromamba run -n biomni \
+    pip install --no-cache-dir scikit-misc==0.5.2
 
-# 3) 装其余 pip 依赖
+# 3) 安装其余 pip 依赖
 RUN micromamba run -n biomni \
     python -m pip install -U pip setuptools wheel && \
     micromamba run -n biomni \
