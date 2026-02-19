@@ -235,3 +235,6 @@ data/ddinter_raw/
 
 # local installer (too large for GitHub)
 biomni_env/Miniconda3-latest-MacOSX-x86_64.sh
+
+# ignore local conda installer
+biomni_env/Miniconda3-latest-MacOSX-x86_64.sh
