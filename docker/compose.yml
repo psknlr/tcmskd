@@ -1,0 +1,50 @@
+services:
+  dev_a:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    platform: linux/arm64
+    container_name: biomni_dev_a
+    working_dir: /workspace
+    volumes:
+      - /Users/mac/workspace/repo_userA:/workspace:cached
+      - biomni_a_home:/home/micromamba
+      - biomni_a_cache:/opt/cache
+    ports:
+      - "8001:8000"
+      - "5174:5173"
+    environment:
+      - PIP_CACHE_DIR=/opt/cache/pip
+      - MAMBA_NO_BANNER=1
+    user: "1000:1000"
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  dev_b:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    platform: linux/arm64
+    container_name: biomni_dev_b
+    working_dir: /workspace
+    volumes:
+      - /Users/mac/workspace/repo_userB:/workspace:cached
+      - biomni_b_home:/home/micromamba
+      - biomni_b_cache:/opt/cache
+    ports:
+      - "8002:8000"
+      - "5175:5173"
+    environment:
+      - PIP_CACHE_DIR=/opt/cache/pip
+      - MAMBA_NO_BANNER=1
+    user: "1000:1000"
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+volumes:
+  biomni_a_home:
+  biomni_a_cache:
+  biomni_b_home:
+  biomni_b_cache:
