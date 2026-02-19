@@ -259,6 +259,24 @@ def get_llm(
             )
         # Custom LLM serving such as SGLang. Must expose an openai compatible API.
         assert base_url is not None, "base_url must be provided for customly served LLMs"
+        # GPT-5 models (including Azure-hosted) reject 'stop' and 'temperature' parameters.
+        if model.startswith("gpt-5"):
+            class _CustomChatOpenAINoStop(ChatOpenAI):
+                def _get_request_payload(self, input_, *, stop=None, **kwargs):  # type: ignore[override]
+                    payload = super()._get_request_payload(input_, stop=stop, **kwargs)
+                    payload.pop("stop", None)
+                    payload.pop("temperature", None)
+                    return payload
+
+            return _CustomChatOpenAINoStop(
+                model=model,
+                temperature=temperature,
+                max_tokens=8192,
+                stop_sequences=stop_sequences,
+                base_url=base_url,
+                api_key=api_key,
+            )
+
         llm = ChatOpenAI(
             model=model,
             temperature=temperature,
