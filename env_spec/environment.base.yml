@@ -1,4 +1,4 @@
-name: /users/mac/miniconda3/envs/biomni_e1
+name: biomni
 channels:
   - conda-forge
   - defaults
