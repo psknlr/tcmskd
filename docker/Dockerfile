@@ -16,7 +16,7 @@ RUN micromamba create -y -n biomni \
       -f /tmp/environment.base.yml && \
     micromamba clean -a -y
 
-# 2) 所有需要编译的包 + 完整编译器工具链统一走 conda-forge
+# 2) 需要编译的包 + 完整编译器工具链走 conda-forge
 RUN micromamba install -y -n biomni \
       -c conda-forge \
       -c bioconda \
@@ -38,7 +38,7 @@ RUN micromamba install -y -n biomni \
 RUN micromamba run -n biomni \
     pip install -U pip setuptools wheel cython
 
-# 4) 预装常见基础依赖（解决安装顺序问题）
+# 4) 预装所有有顺序依赖的基础包（防止旧包构建时找不到依赖）
 RUN micromamba run -n biomni \
     pip install --no-cache-dir \
       python-dateutil \
@@ -51,7 +51,8 @@ RUN micromamba run -n biomni \
       requests \
       numpy \
       pandas \
-      scipy
+      scipy \
+      arrow==0.4.3
 
 # 5) 先用 --no-deps 装 scvi-tools，阻止拉 scikit-misc 重新编译
 RUN micromamba run -n biomni \
