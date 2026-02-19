@@ -35,37 +35,32 @@ RUN micromamba install -y -n biomni \
       pkg-config && \
     micromamba clean -a -y
 
-# 3) 升级 pip 工具链 + 装 meson-python（供 --no-build-isolation 使用）
+# 3) 升级 pip 工具链 + 装 meson-python
 RUN micromamba run -n biomni \
     pip install -U pip setuptools "cython<3.0" wheel meson-python meson ninja
 
 # 4) 预装基础依赖（保证构建顺序正确）
 RUN micromamba run -n biomni \
     pip install --no-cache-dir \
-      python-dateutil \
-      pytz \
-      six \
-      packaging \
-      certifi \
-      charset-normalizer \
-      urllib3 \
-      requests \
-      numpy \
-      pandas \
-      scipy
+      python-dateutil pytz six packaging certifi \
+      charset-normalizer urllib3 requests \
+      numpy pandas scipy \
+      anndata zarr
 
-# 5) 单独装有问题的旧包（--no-build-isolation 绕过隔离构建）
+# 5) 单独装有问题的旧包
 RUN micromamba run -n biomni \
     pip install --no-cache-dir --no-build-isolation \
       arrow==0.4.3
 
-# 6) 先 --no-deps 装 scvi-tools（已从 requirements 移除，防止重复解析依赖）
+# 6) 先 --no-deps 装 scvi-tools
 RUN micromamba run -n biomni \
     pip install --no-cache-dir --no-deps scvi-tools==1.4.1
 
-# 7) 安装其余 pip 依赖
+# 7) 安装其余 pip 依赖（用 legacy-resolver 绕过深度限制）
 RUN micromamba run -n biomni \
-    pip install --no-cache-dir --no-build-isolation \
+    pip install --no-cache-dir \
+      --no-build-isolation \
+      --use-deprecated=legacy-resolver \
       -r /tmp/requirements.pip.txt
 
 ENTRYPOINT ["/bin/bash", "-lc"]
