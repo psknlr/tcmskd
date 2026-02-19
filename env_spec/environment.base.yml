@@ -1,5 +1,6 @@
 name: biomni
 channels:
+  - bioconda
   - conda-forge
   - defaults
 dependencies:
