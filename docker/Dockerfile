@@ -38,7 +38,7 @@ RUN micromamba install -y -n biomni \
 RUN micromamba run -n biomni \
     pip install -U pip setuptools wheel cython
 
-# 4) 预装基础依赖
+# 4) 预装基础依赖（保证构建顺序正确）
 RUN micromamba run -n biomni \
     pip install --no-cache-dir \
       python-dateutil \
@@ -53,17 +53,19 @@ RUN micromamba run -n biomni \
       pandas \
       scipy
 
-# 5) 单独用 --no-build-isolation 装 arrow（让它用主环境的 dateutil）
+# 5) 单独装有问题的旧包（用 --no-build-isolation 绕过隔离构建）
 RUN micromamba run -n biomni \
-    pip install --no-cache-dir --no-build-isolation arrow==0.4.3
+    pip install --no-cache-dir --no-build-isolation \
+      arrow==0.4.3
 
 # 6) 先用 --no-deps 装 scvi-tools，阻止拉 scikit-misc 重新编译
 RUN micromamba run -n biomni \
     pip install --no-cache-dir --no-deps scvi-tools==1.4.1
 
-# 7) 安装其余 pip 依赖
+# 7) 安装其余 pip 依赖（加 --no-build-isolation 防止旧包构建失败）
 RUN micromamba run -n biomni \
-    pip install --no-cache-dir -r /tmp/requirements.pip.txt
+    pip install --no-cache-dir --no-build-isolation \
+      -r /tmp/requirements.pip.txt
 
 ENTRYPOINT ["/bin/bash", "-lc"]
 CMD ["eval \"$(micromamba shell hook --shell bash)\" && micromamba activate biomni && tail -f /dev/null"]
