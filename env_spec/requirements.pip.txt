@@ -170,7 +170,6 @@ looseversion==1.1.2
 lupa==2.6
 lxml==6.0.2
 lz4==4.4.5
-MACS2==2.2.9.1
 Markdown==3.10.2
 markdown-it-py==4.0.0
 marshmallow==3.26.2

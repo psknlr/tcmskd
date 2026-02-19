@@ -16,27 +16,29 @@ RUN micromamba create -y -n biomni \
       -f /tmp/environment.base.yml && \
     micromamba clean -a -y
 
-# 2) 需要编译的包 + 完整编译器工具链走 conda-forge
+# 2) 需要编译的包 + 完整编译器 + 必须走 conda 的包
 RUN micromamba install -y -n biomni \
-      -c conda-forge \
       -c bioconda \
+      -c conda-forge \
       openmm \
       scikit-misc \
       cython \
       biotraj \
       loompy \
+      macs2 \
       r-base \
       git \
       gcc \
       gxx \
       gfortran \
       make \
-      pkg-config && \
+      pkg-config \
+      mesa-libgl-cos7-aarch64 && \
     micromamba clean -a -y
 
 # 3) 升级 pip 工具链
 RUN micromamba run -n biomni \
-    pip install -U pip setuptools wheel cython
+    pip install -U pip setuptools "cython<3.0" wheel
 
 # 4) 预装基础依赖（保证构建顺序正确）
 RUN micromamba run -n biomni \
@@ -53,16 +55,16 @@ RUN micromamba run -n biomni \
       pandas \
       scipy
 
-# 5) 单独装有问题的旧包（用 --no-build-isolation 绕过隔离构建）
+# 5) 单独装有问题的旧包
 RUN micromamba run -n biomni \
     pip install --no-cache-dir --no-build-isolation \
       arrow==0.4.3
 
-# 6) 先用 --no-deps 装 scvi-tools，阻止拉 scikit-misc 重新编译
+# 6) 先 --no-deps 装 scvi-tools，阻止拉 scikit-misc 重新编译
 RUN micromamba run -n biomni \
     pip install --no-cache-dir --no-deps scvi-tools==1.4.1
 
-# 7) 安装其余 pip 依赖（加 --no-build-isolation 防止旧包构建失败）
+# 7) 安装其余 pip 依赖
 RUN micromamba run -n biomni \
     pip install --no-cache-dir --no-build-isolation \
       -r /tmp/requirements.pip.txt
