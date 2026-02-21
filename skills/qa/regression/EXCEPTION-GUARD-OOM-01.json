@@ -1,0 +1,83 @@
+{
+  "case_id": "EXCEPTION-GUARD-OOM-01",
+  "description": "Fix-I: MemoryError 被识别为 EXECUTION_OOM，retryable=true，附带减少输入规模的建议",
+  "test_type": "unit",
+  "function": "biomni.agent.nodes.execute_node.execute_skill",
+  "mock": {
+    "skill_runner": "raise MemoryError('unable to allocate 8GB array for target matrix')"
+  },
+  "inputs": {
+    "state": {},
+    "tool_call": {"id": "call_002", "name": "tcm.analysis.target_analysis", "args": {}},
+    "skill_name": "tcm.analysis.target_analysis",
+    "skill_args": {
+      "herb_names": ["黄芪", "当归", "人参", "甘草", "丹参"],
+      "ob_threshold": 0
+    }
+  },
+  "assertions": [
+    {
+      "description": "函数正常返回（不抛出异常）",
+      "path": "return_type",
+      "op": "eq",
+      "value": "dict"
+    },
+    {
+      "description": "ToolMessage content 包含 OOM 错误码",
+      "path": "return_value.messages[0].content",
+      "op": "contains",
+      "value": "EXECUTION_OOM"
+    },
+    {
+      "description": "content 包含内存溢出提示",
+      "path": "return_value.messages[0].content",
+      "op": "contains",
+      "value": "内存溢出"
+    },
+    {
+      "description": "content 包含减少输入规模建议",
+      "path": "return_value.messages[0].content",
+      "op": "contains",
+      "value": "减少输入数据规模"
+    },
+    {
+      "description": "status 字段为 error",
+      "path": "return_value.status",
+      "op": "eq",
+      "value": "error"
+    },
+    {
+      "description": "error.code 为 EXECUTION_OOM",
+      "path": "return_value.error.code",
+      "op": "eq",
+      "value": "EXECUTION_OOM"
+    },
+    {
+      "description": "error.retryable 为 true（OOM 可通过减小输入重试）",
+      "path": "return_value.error.retryable",
+      "op": "eq",
+      "value": true
+    },
+    {
+      "description": "error.fallback_action 为 retry_with_plan_correction",
+      "path": "return_value.error.fallback_action",
+      "op": "eq",
+      "value": "retry_with_plan_correction"
+    },
+    {
+      "description": "tool_call_id 正确传递",
+      "path": "return_value.messages[0].tool_call_id",
+      "op": "eq",
+      "value": "call_002"
+    }
+  ],
+  "must_not": [
+    {
+      "description": "不允许抛出任何异常（MemoryError 必须被拦截）",
+      "op": "not_raise"
+    }
+  ],
+  "gap_coverage": ["Fix-I"],
+  "related_spec": "v2.4 第一章 1.2 异常分级处理策略",
+  "red_line": "红线六：run_skill 调用必须被 try/except Exception 包裹"
+}

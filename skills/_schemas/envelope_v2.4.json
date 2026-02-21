@@ -1,0 +1,261 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://biomni.dev/schemas/envelope_v2.4.json",
+  "title": "Biomni Skill Envelope v2.4",
+  "description": "所有 Skill 执行结果必须符合此 Envelope Schema。v2.4 新增 EXECUTION_CRASH / EXECUTION_OOM / EXECUTION_TIMEOUT 错误码。",
+  "type": "object",
+  "required": ["outputs"],
+  "additionalProperties": false,
+  "properties": {
+    "outputs": {
+      "type": "object",
+      "required": ["status", "summary_for_llm", "full_log"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["ok", "error"],
+          "description": "执行状态：ok 表示成功，error 表示失败"
+        },
+        "summary_for_llm": {
+          "type": "object",
+          "description": "LLM 消费的精简视图（会写入 ToolMessage.content，受硬截断限制）",
+          "additionalProperties": false,
+          "properties": {
+            "result_brief": {
+              "oneOf": [{"type": "string"}, {"type": "null"}],
+              "description": "结果的简洁文字描述，不超过 500 字"
+            },
+            "structured_data": {
+              "oneOf": [
+                {"type": "object"},
+                {"type": "array"},
+                {"type": "null"}
+              ],
+              "description": "结构化结果数据（LLM 可直接解析），会被 json.dumps 序列化"
+            },
+            "artifact_refs": {
+              "type": "array",
+              "description": "产物引用列表（文件路径等，供 LLM 在后续步骤引用）",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id":   {"type": "string"},
+                  "type": {"type": "string", "enum": ["file", "plot", "report", "dataframe"]},
+                  "path": {"type": "string"},
+                  "desc": {"type": "string"}
+                }
+              }
+            },
+            "next_step_hint": {
+              "oneOf": [{"type": "string"}, {"type": "null"}],
+              "description": "给 LLM 的下一步执行建议"
+            },
+            "error_brief": {
+              "oneOf": [{"type": "string"}, {"type": "null"}],
+              "description": "错误的简洁描述（status=error 时必须填写）"
+            }
+          },
+          "required": ["result_brief", "structured_data", "artifact_refs", "next_step_hint"]
+        },
+        "full_log": {
+          "type": "object",
+          "description": "完整审计日志（不写入 ToolMessage，用于调试和审计）",
+          "required": ["research_log", "artifacts", "provenance"],
+          "additionalProperties": false,
+          "properties": {
+            "research_log": {
+              "type": "array",
+              "description": "执行过程中的详细日志记录",
+              "items": {
+                "type": "object",
+                "required": ["t", "stage", "message"],
+                "properties": {
+                  "t":       {"type": "string", "format": "date-time"},
+                  "stage":   {"type": "string"},
+                  "message": {"type": "string"}
+                }
+              }
+            },
+            "artifacts": {
+              "type": "array",
+              "description": "本次执行产生的产物列表",
+              "items": {
+                "type": "object",
+                "required": ["id", "type", "path"],
+                "properties": {
+                  "id":          {"type": "string"},
+                  "type":        {"type": "string", "enum": ["file", "plot", "report", "dataframe"]},
+                  "path":        {"type": "string"},
+                  "skill":       {"type": "string"},
+                  "description": {"type": "string"},
+                  "created_at":  {"type": "string", "format": "date-time"},
+                  "size_bytes":  {"type": "integer", "minimum": 0}
+                }
+              }
+            },
+            "provenance": {
+              "type": "array",
+              "description": "数据溯源记录",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source":      {"type": "string"},
+                  "version":     {"type": "string"},
+                  "accessed_at": {"type": "string", "format": "date-time"},
+                  "license":     {"type": "string"}
+                }
+              }
+            },
+            "namespace_delta": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "new_vars":      {"type": "array", "items": {"type": "string"}},
+                    "new_artifacts": {"type": "array"},
+                    "updated_vars":  {"type": "array", "items": {"type": "string"}}
+                  }
+                },
+                {"type": "null"}
+              ],
+              "description": "本次执行对 Python REPL 命名空间的变化（仅记录 key，不存储值）"
+            }
+          }
+        },
+        "error": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["code", "message", "retryable", "fallback_action"],
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "description": "错误码（v2.4 新增 EXECUTION_* 系列）",
+                  "enum": [
+                    "EXECUTION_CRASH",
+                    "EXECUTION_OOM",
+                    "EXECUTION_TIMEOUT",
+                    "TOOL_NOT_FOUND",
+                    "INVALID_ARGS",
+                    "PERMISSION_DENIED",
+                    "NETWORK_ERROR",
+                    "DATA_NOT_FOUND",
+                    "SCHEMA_VIOLATION",
+                    "UNKNOWN"
+                  ]
+                },
+                "message": {
+                  "type": "string",
+                  "description": "错误详情"
+                },
+                "retryable": {
+                  "type": "boolean",
+                  "description": "是否可重试"
+                },
+                "mitigation": {
+                  "type": "string",
+                  "description": "缓解措施建议"
+                },
+                "fallback_action": {
+                  "type": "string",
+                  "enum": ["retry_with_plan_correction", "human_review", "skip"],
+                  "description": "降级动作"
+                },
+                "plan_correction_hint": {
+                  "type": "string",
+                  "description": "给 LLM 的 Plan 修正建议"
+                },
+                "category": {
+                  "type": "string",
+                  "description": "错误类别（由 error_classifier 节点补充）"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": ["low", "medium", "high"],
+                  "description": "错误严重程度（由 error_classifier 节点补充）"
+                },
+                "classified_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "分类时间（由 error_classifier 节点补充）"
+                }
+              }
+            },
+            {"type": "null"}
+          ]
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "outputs": {
+        "status": "ok",
+        "summary_for_llm": {
+          "result_brief": "成功查询中药材黄芪的基本信息",
+          "structured_data": {
+            "herb_name": "黄芪",
+            "latin_name": "Astragalus membranaceus",
+            "functions": ["补气固表", "利尿托毒", "排脓"],
+            "components_count": 87
+          },
+          "artifact_refs": [],
+          "next_step_hint": "可继续查询黄芪的具体化学成分，或分析其靶点网络",
+          "error_brief": null
+        },
+        "full_log": {
+          "research_log": [
+            {
+              "t": "2024-01-01T00:00:00Z",
+              "stage": "run",
+              "message": "[tcm.database.herb_query] 查询黄芪完成，返回 87 个成分"
+            }
+          ],
+          "artifacts": [],
+          "provenance": [
+            {
+              "source": "TCMSP",
+              "version": "2.3",
+              "accessed_at": "2024-01-01T00:00:00Z",
+              "license": "academic"
+            }
+          ]
+        },
+        "error": null
+      }
+    },
+    {
+      "outputs": {
+        "status": "error",
+        "summary_for_llm": {
+          "result_brief": null,
+          "structured_data": null,
+          "artifact_refs": [],
+          "next_step_hint": null,
+          "error_brief": "工具 tcm.database.herb_query 执行崩溃（EXECUTION_CRASH）：ZeroDivisionError: division by zero。这通常是工具代码的 Bug，建议跳过此工具并尝试替代方案。"
+        },
+        "full_log": {
+          "research_log": [
+            {
+              "t": "2024-01-01T00:00:00Z",
+              "stage": "warn",
+              "message": "[tcm.database.herb_query] EXECUTION_CRASH 捕获，error_code=EXECUTION_CRASH，exception=ZeroDivisionError: division by zero"
+            }
+          ],
+          "artifacts": [],
+          "provenance": []
+        },
+        "error": {
+          "code": "EXECUTION_CRASH",
+          "message": "ZeroDivisionError: division by zero",
+          "retryable": false,
+          "mitigation": "Skill 代码存在 Bug，请报告给开发团队",
+          "fallback_action": "human_review",
+          "plan_correction_hint": "此 Skill 存在实现 Bug，请跳过并使用替代方案"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "case_id": "MSG-TRIM-PAIRING-01",
+  "description": "Fix-J: 修剪旧轮次时，AIMessage 和其所有对应 ToolMessage 必须同时删除，不出现孤立消息",
+  "test_type": "unit",
+  "function": "biomni.utils.message_trimmer.build_remove_messages",
+  "inputs": {
+    "messages": [
+      {"type": "HumanMessage",  "id": "h1", "content": "分析黄芪和当归的靶点并绘制网络图"},
+      {"type": "AIMessage",     "id": "ai1", "content": "", "tool_calls": [{"id": "c1", "name": "tcm.database.herb_query", "args": {"herb_name": "黄芪"}}, {"id": "c2", "name": "tcm.database.herb_query", "args": {"herb_name": "当归"}}]},
+      {"type": "ToolMessage",   "id": "tm1", "content": "{\"status\":\"ok\"}", "tool_call_id": "c1", "name": "tcm.database.herb_query"},
+      {"type": "ToolMessage",   "id": "tm2", "content": "{\"status\":\"ok\"}", "tool_call_id": "c2", "name": "tcm.database.herb_query"},
+      {"type": "AIMessage",     "id": "ai2", "content": "", "tool_calls": [{"id": "c3", "name": "tcm.analysis.target_analysis", "args": {"herb_names": ["黄芪", "当归"]}}]},
+      {"type": "ToolMessage",   "id": "tm3", "content": "{\"status\":\"ok\"}", "tool_call_id": "c3", "name": "tcm.analysis.target_analysis"},
+      {"type": "AIMessage",     "id": "ai3", "content": "", "tool_calls": [{"id": "c4", "name": "tcm.analysis.herb_similarity", "args": {"herb_names": ["黄芪", "当归"]}}]},
+      {"type": "ToolMessage",   "id": "tm4", "content": "{\"status\":\"ok\"}", "tool_call_id": "c4", "name": "tcm.analysis.herb_similarity"},
+      {"type": "AIMessage",     "id": "ai4", "content": "", "tool_calls": [{"id": "c5", "name": "tcm.visualization.herb_network_plot", "args": {"herb_names": ["黄芪", "当归"]}}]},
+      {"type": "ToolMessage",   "id": "tm5", "content": "{\"status\":\"ok\"}", "tool_call_id": "c5", "name": "tcm.visualization.herb_network_plot"},
+      {"type": "AIMessage",     "id": "ai5", "content": "", "tool_calls": [{"id": "c6", "name": "tcm.database.herb_query", "args": {"herb_name": "人参"}}, {"id": "c7", "name": "tcm.database.herb_query", "args": {"herb_name": "丹参"}}]},
+      {"type": "ToolMessage",   "id": "tm6", "content": "{\"status\":\"ok\"}", "tool_call_id": "c6", "name": "tcm.database.herb_query"},
+      {"type": "ToolMessage",   "id": "tm7", "content": "{\"status\":\"ok\"}", "tool_call_id": "c7", "name": "tcm.database.herb_query"}
+    ],
+    "keep_rounds": 3,
+    "keep_first_n_human": 1
+  },
+  "assertions": [
+    {
+      "description": "应删除第 1、2 轮（保留最近 3 轮）",
+      "path": "return_value",
+      "op": "ids_match",
+      "value": ["ai1", "tm1", "tm2", "ai2", "tm3"],
+      "description_detail": "第1轮(ai1,tm1,tm2)和第2轮(ai2,tm3)应被删除"
+    },
+    {
+      "description": "HumanMessage h1 不被删除（keep_first_n_human=1）",
+      "path": "return_value",
+      "op": "not_contains_id",
+      "value": "h1"
+    },
+    {
+      "description": "最近3轮的消息不被删除（ai3,tm4,ai4,tm5,ai5,tm6,tm7）",
+      "path": "return_value",
+      "op": "none_of_ids_in",
+      "value": ["ai3", "tm4", "ai4", "tm5", "ai5", "tm6", "tm7"]
+    },
+    {
+      "description": "不存在孤立 ToolMessage：若 ai1 被删，tm1 和 tm2 也必须被删",
+      "op": "pairing_intact",
+      "description_detail": "所有被删除的 AIMessage 的对应 ToolMessage 也都被删除，不出现孤立消息"
+    },
+    {
+      "description": "返回的对象均为 RemoveMessage 实例",
+      "path": "return_value",
+      "op": "all_type_eq",
+      "value": "RemoveMessage"
+    },
+    {
+      "description": "删除 5 条消息（第1轮3条 + 第2轮2条）",
+      "path": "len(return_value)",
+      "op": "eq",
+      "value": 5
+    }
+  ],
+  "gap_coverage": ["Fix-J"],
+  "related_spec": "v2.4 第二章 2.2 核心约束：配对完整性",
+  "red_line": "删除 messages 时必须保证 AIMessage + ToolMessage 配对完整性，不允许出现孤立消息"
+}
