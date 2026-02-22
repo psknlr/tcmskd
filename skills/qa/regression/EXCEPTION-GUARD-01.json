@@ -1,0 +1,92 @@
+{
+  "case_id": "EXCEPTION-GUARD-01",
+  "description": "Fix-I: run_skill 抛出 ZeroDivisionError 时，execute_skill 返回合法 ToolMessage 而非崩溃",
+  "test_type": "unit",
+  "function": "biomni.agent.nodes.execute_node.execute_skill",
+  "mock": {
+    "skill_runner": "raise ZeroDivisionError('division by zero in ADMET scoring')"
+  },
+  "inputs": {
+    "state": {},
+    "tool_call": {"id": "call_001", "name": "tcm.database.herb_query", "args": {}},
+    "skill_name": "tcm.database.herb_query",
+    "skill_args": {"herb_name": "黄芪"}
+  },
+  "assertions": [
+    {
+      "description": "函数正常返回（不抛出异常）",
+      "path": "return_type",
+      "op": "eq",
+      "value": "dict"
+    },
+    {
+      "description": "返回的 messages 包含 ToolMessage",
+      "path": "return_value.messages[0].__class__.__name__",
+      "op": "eq",
+      "value": "ToolMessage"
+    },
+    {
+      "description": "ToolMessage 的 tool_call_id 与输入匹配",
+      "path": "return_value.messages[0].tool_call_id",
+      "op": "eq",
+      "value": "call_001"
+    },
+    {
+      "description": "ToolMessage content 包含错误码",
+      "path": "return_value.messages[0].content",
+      "op": "contains",
+      "value": "EXECUTION_CRASH"
+    },
+    {
+      "description": "content 是字符串（Fix-F 保证）",
+      "path": "return_value.messages[0].content",
+      "op": "type_eq",
+      "value": "str"
+    },
+    {
+      "description": "content 长度不超过 MAX_CONTENT_CHARS（Fix-H 保证）",
+      "path": "len(return_value.messages[0].content)",
+      "op": "lte",
+      "value": 10000
+    },
+    {
+      "description": "research_log 包含 crash 记录",
+      "path": "return_value.research_log[-1].message",
+      "op": "contains",
+      "value": "ZeroDivisionError"
+    },
+    {
+      "description": "status 字段为 error",
+      "path": "return_value.status",
+      "op": "eq",
+      "value": "error"
+    },
+    {
+      "description": "error 字段包含 code",
+      "path": "return_value.error.code",
+      "op": "eq",
+      "value": "EXECUTION_CRASH"
+    },
+    {
+      "description": "error.retryable 为 false（ZeroDivisionError 不可重试）",
+      "path": "return_value.error.retryable",
+      "op": "eq",
+      "value": false
+    },
+    {
+      "description": "error.fallback_action 为 human_review",
+      "path": "return_value.error.fallback_action",
+      "op": "eq",
+      "value": "human_review"
+    }
+  ],
+  "must_not": [
+    {
+      "description": "不允许抛出任何异常",
+      "op": "not_raise"
+    }
+  ],
+  "gap_coverage": ["Fix-I"],
+  "related_spec": "v2.4 第一章 1.1",
+  "red_line": "红线六：run_skill 调用必须被 try/except Exception 包裹"
+}
